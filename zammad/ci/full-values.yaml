@@ -1,0 +1,91 @@
+secrets:
+  autowizard:
+    useExisting: true
+    secretKey: autowizard
+    secretName: autowizard
+  elasticsearch:
+    useExisting: true
+    secretKey: elasticsearch-password
+    secretName: elasticsearch-existing-secret
+  postgresql:
+    useExisting: true
+    secretKey: postgresql-password
+    secretName: postgresql-existing-secret
+  redis:
+    useExisting: true
+    secretKey: redis-password
+    secretName: redis-existing-secret
+
+autoWizard:
+  enabled: true
+
+elasticsearch:
+  security:
+    existingSecret: elasticsearch-existing-secret
+
+ingress:
+  enabled: true
+
+minio:
+  auth:
+    existingSecret: minio-existing-secret
+
+redis:
+  auth:
+    existingSecret: redis-existing-secret
+    existingSecretPasswordKey: redis-password
+
+zammadConfig:
+  storageVolume:
+    enabled: true
+    existingClaim: 'storage-volume-claim'
+  minio:
+    enabled: true
+  customVolumes:
+    - name: custom-volume
+      configMap:
+        name: custom-file
+  customVolumeMounts:
+    - name: custom-volume
+      mountPath: /opt/zammad/custom_mount
+      readOnly: true
+  nginx:
+    clientMaxBodySize: 111M
+    podLabels:
+      my-nginx-pod-label: my-nginx-pod-label-value
+    podAnnotations:
+      my-nginx-pod-annotation: my-nginx-pod-annotation-value
+  railsserver:
+    podLabels:
+      my-railsserver-pod-label: my-railsserver-pod-label-value
+    podAnnotations:
+      my-railsserver-pod-annotation: my-railsserver-pod-annotation-value
+  scheduler:
+    podLabels:
+      my-scheduler-pod-label: my-scheduler-pod-label-value
+    podAnnotations:
+      my-scheduler-pod-annotation: my-scheduler-pod-annotation-value
+  websocket:
+    podLabels:
+      my-websocket-pod-label: my-websocket-pod-label-value
+    podAnnotations:
+      my-websocket-pod-annotation: my-websocket-pod-annotation-value
+  initJob:
+    podLabels:
+      my-initJob-pod-label: my-initJob-pod-label-value
+    podAnnotations:
+      my-initJob-pod-annotation: my-initJob-pod-annotation-value
+    podSpec:
+      activeDeadlineSeconds: 1337
+
+commonLabels:
+  my-common-label: my-common-label-value
+
+commonAnnotations:
+  my-common-annotation: my-common-annotation-value
+
+podLabels:
+  my-pod-label: my-pod-label-value
+
+podAnnotations:
+  my-pod-annotation: my-pod-annotation-value

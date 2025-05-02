@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zammad.fullname" . }}-init
+  labels:
+    {{- include "zammad.labels" . | nindent 4 }}
+  annotations:
+    {{- include "zammad.annotations" . | nindent 4 }}
+data:
+  postgresql-init: |-
+    #!/bin/bash
+    set -e
+
+    if ! (bundle exec rails r 'puts User.any?' 2> /dev/null | grep -q true); then
+        bundle exec rake db:migrate db:seed
+    else
+        echo Executing migrations...
+        bundle exec rake db:migrate
+
+        echo Synchronizing locales and translations...
+        bundle exec rails r "Locale.sync; Translation.sync"
+    fi
+
+    echo "postgresql init complete :)"
+  postgresql-init-post: |-
+    #!/bin/bash
+    set -e
+
+    # Run a rails command to ensure the database is up and running.
+    bundle exec rails r "true"
+
+    echo "init sequence complete :)"
+  zammad-init: |-
+    #!/bin/bash
+    set -e
+
+    {{- with .Values.zammadConfig.initContainers.zammad.customInit }}
+      {{- . | nindent 4 }}
+    {{- end }}
+
+    echo "zammad init complete :)"
+{{ if .Values.zammadConfig.elasticsearch.initialisation }}
+  elasticsearch-init: |-
+    #!/bin/bash
+    set -e
+
+    ELASTICSEARCH_URL={{ .Values.zammadConfig.elasticsearch.schema }}://{{ if .Values.zammadConfig.elasticsearch.enabled }}{{ .Release.Name }}-elasticsearch{{ else }}{{ .Values.zammadConfig.elasticsearch.host }}{{ end }}:{{ .Values.zammadConfig.elasticsearch.port }}
+    bundle exec rails r "Setting.set('es_url', '${ELASTICSEARCH_URL}')"
+
+    ELASTICSEARCH_USER=${ELASTICSEARCH_USER:-{{ .Values.zammadConfig.elasticsearch.user }}}
+    if [ -n "${ELASTICSEARCH_USER}" ] && [ -n "${ELASTICSEARCH_PASSWORD}" ]; then
+        bundle exec rails r "Setting.set('es_user', '${ELASTICSEARCH_USER}'); Setting.set('es_password', '${ELASTICSEARCH_PASSWORD}')"
+    fi
+
+  {{ if .Values.zammadConfig.elasticsearch.reindex }}
+    bundle exec rake zammad:searchindex:rebuild
+  {{ else }}
+    echo "Checking if an elasticsearch index already exists…"
+
+    # Ensure ES connectivity, as SearchIndexBackend.index_exists? swallows internal errors.
+    bundle exec rails r "SearchIndexBackend.version"
+
+    if bundle exec rails r "SearchIndexBackend.index_exists?('Ticket') || exit(1)"
+    then
+      echo "Elasticsearch index exists, no automatic reindexing is needed."
+    else
+      echo "Elasticsearch index does not exist yet, create it now…"
+      bundle exec rake zammad:searchindex:rebuild
+    fi
+  {{ end }}
+
+    echo "elasticsearch init complete :)"
+{{ end }}
